@@ -56,10 +56,9 @@ app = workflow.compile(checkpointer=MemorySaver())
 
 async def interact(user_id: str, messages: list[BaseMessage], verbose: bool = False) -> str:
     """Entry point for interacting with langgraph application."""
-    saved_state = app.checkpointer.get({"configurable": {"thread_id": user_id}})
-
-    if saved_state:
-        state = saved_state
+    saved_state = app.get_state({"configurable": {"thread_id": user_id}})
+    if saved_state.values:
+        state = saved_state.values
         if messages and len(messages) > 0:
             state["message_history"].append(messages[-1])
     else:

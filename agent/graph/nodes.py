@@ -2,6 +2,7 @@ from agent.llm.models import LLMAgent
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
 from agent.graph.models import State
 from agent.GD.requestor import GDRequestor
+from agent.graph.tools import get_tools
 
 # from neuromail_agent.db.db_handler import DBHandler
 # from neuromail_agent.client.client_manager import ImapClientManager
@@ -49,6 +50,7 @@ async def file_selection_node(state: State) -> State:
         # print("SYSTEM MESSAGE:", system_message.content, end="\n\n")
     messages = [system_message, *state["message_history"]]
     response = await llm.call_model(messages)
+    response = response["parsed"]
     state["current_response"] = response["message"]
     state["selected_file_id"] = response["file_id"]
     state["selected_file_name"] = response["file_name"]
@@ -68,15 +70,41 @@ async def file_questions_node(state: State) -> State:
         "answer": "ответ пользователю",
         "reselect": "флаг для выбора другого файла"
     }
+
+    tools = get_tools()
+    llm_with_tools = LLMAgent(tools=tools, tool_choice="auto")
     llm = LLMAgent(schema=schema)
     system_message = SystemMessage(content=FILE_QUESTIONS_PROMPT.format(state["selected_file_name"], state["current_file_data"]))
     # if state["verbose"]:
         # print("SYSTEM MESSAGE:", system_message.content, end="\n\n")
+
     messages = [system_message, *state["message_history"]]
-    response = await llm.call_model(messages)
-    # print(response)
-    state["current_response"] = response["answer"]
-    if response["reselect"]:
+    response = await llm_with_tools.call_model(messages)
+    print(response)
+    intermediate_steps = []
+    if hasattr(response, "tool_calls"):
+        for tool_call in response.tool_calls:
+            if state["verbose"]:
+                print(tool_call)
+            tool_name = tool_call["name"]
+            tool_args = tool_call["args"]
+
+            tool = next(t for t in tools if t.name == tool_name)
+            tool_result = await (await tool.ainvoke(tool_args))
+
+            intermediate_steps.append((tool_call, tool_result))
+
+    full_messages = messages.copy()
+    for tool_call, tool_result in intermediate_steps:
+        if state["verbose"]:
+            print("TOOL:", tool_call, end="\n\n")
+        full_messages.append(AIMessage(content="", tool_calls=[tool_call]))
+        full_messages.append(ToolMessage(content=str(tool_result), tool_call_id=tool_call["id"]))
+
+    final_response = await llm.call_model(full_messages)
+
+    state["current_response"] = final_response["parsed"]["answer"]
+    if final_response["parsed"]["reselect"]:
         state["current_file_data"] = None
         state["available_files"] = None
         state["selected_file_id"] = None

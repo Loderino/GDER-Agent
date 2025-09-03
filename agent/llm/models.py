@@ -25,8 +25,7 @@ class LLMAgent:
                 timeout = 10
             )
         if schema:
-            self.llm = self.llm.with_structured_output(schema, method="json_mode")
-
+            self.llm = self.llm.with_structured_output(schema, method="json_mode", include_raw=True)
     async def call_model(self, messages: list[BaseMessage]):
         try:
             return await self.llm.ainvoke(messages)
