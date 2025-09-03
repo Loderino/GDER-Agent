@@ -8,10 +8,18 @@ from agent.constants import GD_CREDENTIALS_FILE, AUTH_DATA_DIR
 import pandas as pd
 
 class GDRequestor:
+    _instance = None
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
     def __init__(self, use_cache=True):
-        self._creds = None
-        self._auth(use_cache=use_cache)
-        self._service = build('drive', 'v3', credentials=self._creds)
+        if not hasattr(self, '_initialized'):
+            self._initialized = True
+            self._creds = None
+            self._auth(use_cache=use_cache)
+            self._service = build('drive', 'v3', credentials=self._creds)
 
     def _auth(self, use_cache=True):
         if use_cache and (AUTH_DATA_DIR / "token.json").exists():
@@ -24,11 +32,11 @@ class GDRequestor:
 
     def list_files(self):
         query = "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or " \
-            "mimeType='application/vnd.ms-excel'"
+            "mimeType='application/vnd.ms-excel'"# or mimeType='application/vnd.google-apps.spreadsheet'"
         results = self._service.files().list(
             q=query,
             spaces='drive',
-            fields="files(id, name, mimeType)",
+            fields="files(id, name)",
             pageSize=1000
         ).execute()
         files = results.get('files', [])
@@ -44,6 +52,8 @@ class GDRequestor:
         Returns:
             pandas.DataFrame: Данные из Excel-файла
         """
+        #if self._servise.files().get(fileId=file_id).execute()['mimeType'] != "application/vnd.google-apps.spreadsheet":
+
         request = self._service.files().get_media(fileId=file_id)
         file_content = io.BytesIO()
         downloader = MediaIoBaseDownload(file_content, request)
@@ -53,7 +63,7 @@ class GDRequestor:
         file_content.seek(0)
         df = pd.read_excel(file_content)
         print(df.head())
-        return df
+        return df.to_dict(orient='records')
 
 if __name__ == "__main__":
     a = GDRequestor()
