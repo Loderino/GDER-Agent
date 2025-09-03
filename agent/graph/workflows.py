@@ -1,10 +1,8 @@
-from typing import Literal
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import StateGraph
 from langchain_core.messages import BaseMessage
 from agent.graph.models import State
 from agent.graph.nodes import authentication_node, file_selection_node, files_getting_node, file_reading_node, file_questions_node
-import operator
 
 workflow = StateGraph(State)
 
@@ -53,23 +51,17 @@ workflow.add_edge(
     "__end__"#"file_questions"
 )
 
-# Компилируем в приложение с сохранением состояния
+
 app = workflow.compile(checkpointer=MemorySaver())
 
-# Словарь для хранения состояний пользователей
-user_states = {}
+async def interact(user_id: str, messages: list[BaseMessage], verbose: bool = False) -> str:
+    """Entry point for interacting with langgraph application."""
+    saved_state = app.checkpointer.get({"configurable": {"thread_id": user_id}})
 
-async def interact(
-    user_id: str, messages: list[BaseMessage], verbose: bool = False
-) -> str:
-    """
-    Entry point for interacting with langgraph application.
-    """
-    # Получаем сохраненное состояние или создаем новое
-    if user_id in user_states:
-        state = user_states[user_id]
-        # Добавляем только новое сообщение
-        state["message_history"].append(messages[-1])
+    if saved_state:
+        state = saved_state
+        if messages and len(messages) > 0:
+            state["message_history"].append(messages[-1])
     else:
         state = State(
             verbose=verbose,
@@ -78,9 +70,5 @@ async def interact(
             files_listed=False
         )
 
-    # Вызываем граф с текущим состоянием
     state = await app.ainvoke(state, config={"configurable": {"thread_id": user_id}})
-
-    # Сохраняем обновленное состояние
-    user_states[user_id] = state
     return state["current_response"]
