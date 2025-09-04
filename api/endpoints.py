@@ -1,12 +1,11 @@
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import StreamingResponse
-import time
+from fastapi.responses import StreamingResponse, JSONResponse
 import uuid
 import json
 
+from api.utils import make_openai_style_response, make_openai_style_chunk
 from agent.agent import Agent
 from langchain_core.messages import HumanMessage, AIMessage
-from api.models import *
 
 router = APIRouter(prefix="/v1")
 
@@ -15,14 +14,15 @@ agent=Agent()
 
 @router.get("/models")
 async def list_models():
-    models = [
-        Model(
-            id="GDER-agent",
-            created=1677610602,
-            owned_by="Loderino"
-        )
+    return JSONResponse({"object": "list",
+     "data":[
+        {
+            "id":"GDER-agent",
+            "created":1677610602,
+            "owned_by":"Loderino"
+        }
     ]
-    return ModelsResponse(data=models)
+    })
 
 async def chat_completion(messages):
     user_message = next((m.get("content", "") for m in messages if m.get("role") == "user"), "")
@@ -34,40 +34,8 @@ async def chat_completion(messages):
                 "Как использовать календарь событий?"
             ]
         }
+        return make_openai_style_response(json.dumps(follow_ups), 50, 100) 
 
-        return ChatCompletionResponse(
-            id = f"chatcmpl-{uuid.uuid4()}",
-            object = "chat.completion",
-            created = int(time.time()),
-            model= "GDER-agent",
-            choices= [
-                ChatCompletionChoice(
-                    index=0,
-                    message=Message(
-                        role="assistant",
-                        content=json.dumps(follow_ups),
-                        refusal=None,
-                        annotations=[]
-                    ),
-                    logprob=None,
-                    finish_reason="stop"
-                )
-            ],
-            usage= {
-                "prompt_tokens": 50,
-                "completion_tokens": len(json.dumps(follow_ups)) // 4,
-                "total_tokens": 50 + (len(json.dumps(follow_ups)) // 4),
-                "prompt_tokens_details": {"cached_tokens": 0, "audio_tokens": 0},
-                "completion_tokens_details": {
-                    "reasoning_tokens": 0, 
-                    "audio_tokens": 0, 
-                    "accepted_prediction_tokens": 0, 
-                    "rejected_prediction_tokens": 0
-                }
-            }
-        ) 
-
-    # Обычный запрос - преобразуем сообщения
     langchain_messages = []
     for msg in messages:
         if msg.get("role") == "user":
@@ -76,38 +44,8 @@ async def chat_completion(messages):
             langchain_messages.append(AIMessage(content=msg.get("content", "")))
 
     response = await agent.communicate(1, langchain_messages, verbose=True)
+    return make_openai_style_response(response, 50, 100)
 
-    return ChatCompletionResponse(
-        id = f"chatcmpl-{uuid.uuid4()}",
-        object = "chat.completion",
-        created = int(time.time()),
-        model= "GDER-agent",
-        choices= [
-            ChatCompletionChoice(
-                index=0,
-                message=Message(
-                    role="assistant",
-                    content=response,
-                    refusal=None,
-                    annotations=[]
-                ),
-                logprob=None,
-                finish_reason="stop"
-            )
-        ],
-        usage= {
-            "prompt_tokens": 50,
-            "completion_tokens": len(response) // 4,
-            "total_tokens": 50 + (len(response) // 4),
-            "prompt_tokens_details": {"cached_tokens": 0, "audio_tokens": 0},
-            "completion_tokens_details": {
-                "reasoning_tokens": 0, 
-                "audio_tokens": 0, 
-                "accepted_prediction_tokens": 0, 
-                "rejected_prediction_tokens": 0
-            }
-        }
-    )
 
 def split_text(text, chunk_size=8):
     """
@@ -127,80 +65,28 @@ def split_text(text, chunk_size=8):
 def stream_imitation(text):
     answer_id = f"chatcmpl-{uuid.uuid4()}"
 
-    first_chunk = {
-        "id":answer_id,
-        "object":"chat.completion.chunk",
-        "created": int(time.time()),
-        "model": "GDER-agent",
-        "service_tier": "default", 
-        "system_fingerprint": None,
-        "choices":[
-            {
-                "index":0,
-                "delta": {
-                    "role":"assistant",
-                    "content":"",
-                    "refusal": None
-                },
-                "logprobs":None,
-                "finish_reason":None
-            }
-        ],
-        "usage":None
-    }
-    yield f"data: {first_chunk}\n\n"
+    yield f"data: {make_openai_style_chunk(answer_id, is_first=True)}\n\n"
     for chunk in split_text(text):
-        openai_style_chunk = {
-        "id":answer_id,
-        "object":"chat.completion.chunk",
-        "created": int(time.time()),
-        "model": "GDER-agent",
-        "service_tier": "default", 
-        "system_fingerprint": None,
-        "choices":[
-            {
-                "index":0,
-                "delta": {
-                    "content":chunk
-                },
-                "logprobs":None,
-                "finish_reason":None
-            }
-        ],
-        "usage":None
-    }
-        yield f"data: {json.dumps(openai_style_chunk)}\n\n"
-
-    chunk = {
-        "id":answer_id,
-        "object":"chat.completion.chunk",
-        "created": int(time.time()),
-        "model": "GDER-agent",
-        "service_tier": "default", 
-        "system_fingerprint": None,
-        "choices":[
-            {
-                "index":0,
-                "delta": {},
-                "logprobs":None,
-                "finish_reason":"stop"
-            }
-        ],
-        "usage":None
-    }
-    yield f"data: {json.dumps(chunk)}\n\n"
-
-    chunk = {
-        "id":answer_id,
-        "object":"chat.completion.chunk",
-        "created": int(time.time()),
-        "model": "GDER-agent",
-        "service_tier": "default", 
-        "system_fingerprint": None,
-        "choices":[],
-        "usage":{"prompt_tokens": 11, "completion_tokens": 14, "total_tokens": 25, "prompt_tokens_details": {"cached_tokens": 0, "audio_tokens": 0}, "completion_tokens_details": {"reasoning_tokens": 0, "audio_tokens": 0, "accepted_prediction_tokens": 0, "rejected_prediction_tokens": 0}}
-    }    
-    yield f"data: {json.dumps(chunk)}\n\n"
+        yield f"data: {make_openai_style_chunk(answer_id, text=chunk)}\n\n"
+    yield f"data: {make_openai_style_chunk(answer_id, finish_reason='stop')}\n\n"
+    final_chunk = make_openai_style_chunk(
+        answer_id, 
+        usage={
+            "prompt_tokens": 11, 
+            "completion_tokens": 14, 
+            "total_tokens": 25, 
+            "prompt_tokens_details": {
+                "cached_tokens": 0, 
+                "audio_tokens": 0
+                }, 
+            "completion_tokens_details": {
+                "reasoning_tokens": 0, 
+                "audio_tokens": 0, 
+                "accepted_prediction_tokens": 0, 
+                "rejected_prediction_tokens": 0}
+                }
+            )
+    yield f"data: {final_chunk}\n\n"
 
     yield "data: [DONE]"
 
