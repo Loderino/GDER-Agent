@@ -1,7 +1,8 @@
-import os
+import httpx
 from agent.llm.models import LLMAgent
 from agent.graph.workflows import interact
-
+from agent.GD.requestor import GDRequestor
+from agent.exceptions import AgentError
 class Agent:
     """
     Mail agent for interacting with email accounts using langgraph.
@@ -17,16 +18,8 @@ class Agent:
     """
 
     api_key = None
-    api_base = None
+    base_url = None
     model = None
-    # db_dir = "./"
-    # _db_url = "sqlite://{}/db.sqlite3"
-
-    # def __init__(self):
-    #     """
-    #     Initializes the MailAgent instance.
-    #     """
-    #     DBHandler.DB_URL = self._db_url.format(self.db_dir)
 
     def __setattr__(self, name: str, value: str):
         """
@@ -36,18 +29,36 @@ class Agent:
             name (str): The name of the attribute to set.
             value (str): The value to set for the attribute.
         """
-        if name == "api_base":
+        if name == "base_url":
             LLMAgent.base_url = value
         elif name == "api_key":
             LLMAgent.api_key = value
         elif name == "model":
             LLMAgent.model = value
-        # elif name == "db_dir":
-        #     if os.path.isdir(value):
-        #         value = str(value).rstrip("/")
-        #         DBHandler.DB_URL = self._db_url.format(value)
-        #     else:
-        #         raise ValueError("The db_dir path must be an existing directory.")
+
+    @staticmethod
+    async def check_health():
+        """
+        Checks the health of the agent.
+
+        Returns:
+            bool: True if the agent is healthy, False otherwise.
+        """
+        try:
+            response = httpx.get(LLMAgent.base_url + "/models", headers={"Authorization": "Bearer " + LLMAgent.api_key}, timeout=5)
+        except (httpx.ConnectTimeout, httpx.ConnectError) as exc:
+            raise AgentError("No connection to llm api") from exc
+        if response.status_code==401:
+            raise AgentError("wrong api key")
+        if response.status_code!=200:
+            raise AgentError("wrong llm data")
+        for model in response.json()["data"]:
+            if model["id"] == LLMAgent.model:
+                break
+        else:
+            raise AgentError(f"model {LLMAgent.model} not available.")
+        GDRequestor()
+        return True
 
     async def communicate(self, user_id, messages, verbose=False):
         """

@@ -1,4 +1,5 @@
 from google.oauth2.credentials import Credentials
+from google.oauth2 import service_account
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 import io
@@ -6,20 +7,32 @@ from googleapiclient.http import MediaIoBaseDownload
 from agent.GD import SCOPES
 from agent.constants import GD_CREDENTIALS_FILE, AUTH_DATA_DIR
 import pandas as pd
+import json
+from agent.exceptions import GoogleDriveAuthError
 
 class GDRequestor:
     _instance = None
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls):
         if not cls._instance:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self, use_cache=True):
+    def __init__(self):
         if not hasattr(self, '_initialized'):
             self._initialized = True
             self._creds = None
-            self._auth(use_cache=use_cache)
-            self._service = build('drive', 'v3', credentials=self._creds)
+            try:
+                with open(GD_CREDENTIALS_FILE, "r", encoding="utf-8") as f:
+                    info = json.load(f)
+                if "installed" in info:
+                    self._auth(use_cache=True)
+                else:
+                    self._auth_from_service_account()
+                self._service = build('drive', 'v3', credentials=self._creds)
+            except FileNotFoundError as exc:
+                raise GoogleDriveAuthError(f"Credentials file not found by path {GD_CREDENTIALS_FILE}") from exc
+            except Exception as exc:
+                raise GoogleDriveAuthError(str(exc)) from exc
 
     def _auth(self, use_cache=True):
         if use_cache and (AUTH_DATA_DIR / "token.json").exists():
@@ -29,6 +42,9 @@ class GDRequestor:
             self._creds = flow.run_local_server(port=0)
             with open(AUTH_DATA_DIR / 'token.json', 'w', encoding="utf-8") as token:
                 token.write(self._creds.to_json())
+    
+    def _auth_from_service_account(self):
+        self._creds = service_account.Credentials.from_service_account_file(GD_CREDENTIALS_FILE, scopes=SCOPES)
 
     def list_files(self):
         query = "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or " \

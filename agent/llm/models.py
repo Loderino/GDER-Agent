@@ -1,7 +1,7 @@
 from langchain_openai import ChatOpenAI
 from openai import NotFoundError, APITimeoutError, APIConnectionError
 from langchain_core.messages import BaseMessage
-from agent.llm.exceptions import LLMError
+from agent.exceptions import LLMError
 
 class LLMAgent:
     model: str = None

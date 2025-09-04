@@ -16,11 +16,11 @@ workflow.add_node("file_questions", file_questions_node)
 def router(state):
     if not state.get("authenticated", False):
         return "authentication"
-    if not state.get("available_files", False):
+    if  state.get("available_files", []) is None:
         return "files_getting"
-    if not state.get("selected_file_id", False):
+    if state.get("selected_file_id", None) is None:
         return "file_selection"
-    if not state.get("current_file_data", False):
+    if state.get("current_file_data", None) is None:
         return "file_reading"
     return "file_questions"
 
@@ -32,19 +32,19 @@ workflow.add_conditional_edges(
 # Добавляем условные переходы
 workflow.add_conditional_edges(
     "authentication",
-    lambda state: "files_getting" if state.get("authenticated", False) else "authentication"
+    lambda state: "files_getting" if state.get("authenticated", False) else "__end__"
 )
 workflow.add_conditional_edges(
     "files_getting",
-    lambda state: "file_selection" if state.get("available_files", False) else "files_getting"
+    lambda state: "file_selection" if state.get("available_files", None) is not None else "__end__"
 )
 workflow.add_conditional_edges(
     "file_selection",
-    lambda state: "file_reading" if state.get("selected_file_id", False) else "__end__"#"file_selection"
+    lambda state: "file_reading" if state.get("selected_file_id", False) else "__end__"
 )
 workflow.add_conditional_edges(
     "file_reading",
-    lambda state: "file_questions" if state.get("current_file_data", False) else "__end__"#"file_reading"
+    lambda state: "file_questions" if state.get("current_file_data", False) else "__end__"
 )
 workflow.add_edge(
     "file_questions",
