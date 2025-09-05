@@ -1,28 +1,52 @@
+import re
 import pandas as pd
 
 class ExcelReader:
-    def __init__(self, file_name, file):
-        """Инициализация с путем к Excel-файлу."""
+    """
+    Class for reading Excel files.
+    """
+    def __init__(self, file_name: str, file_path: str):
+        """
+        Initialize ExcelReader.
+
+        Args:
+            file_name (str): file name.
+            file_path (str): path to file.
+        """
         self.file_name = file_name
-        self.excel_file = pd.ExcelFile(file)
-        self.sheets = self.excel_file.sheet_names
+        self.file_path = file_path
+        excel_file = pd.ExcelFile(file_path)
+        self.sheets = excel_file.sheet_names
         self.dataframes = {}
 
-    def get_file_summary(self):
-        """Возвращает общую информацию о файле."""
+    async def get_file_summary(self) -> dict:
+        """
+        Get summary of the file.
+
+        Returns:
+            dict: Summary of the file with keys: file_name, sheet_count, sheet_names
+        """
         return {
             "file_name": self.file_name,
             "sheet_count": len(self.sheets),
             "sheet_names": self.sheets
         }
 
-    def get_sheet_preview(self, sheet_name=None):
-        """Возвращает предпросмотр указанного листа."""
+    async def get_sheet_preview(self, sheet_name: str = None) -> dict:
+        """
+        Get preview of the specified sheet.
+
+        Args:
+            sheet_name (str): name of sheet for preview
+
+        Returns:
+            dict: Preview of the sheet with keys: sheet_name, row_count, column_count, columns, preview_rows, data_types
+        """
         if sheet_name is None:
             sheet_name = self.sheets[0]
 
         if sheet_name not in self.dataframes:
-            self.dataframes[sheet_name] = pd.read_excel(self.excel_file, sheet_name)
+            self.dataframes[sheet_name] = pd.read_excel(self.file_path, sheet_name)
 
         df = self.dataframes[sheet_name]
 
@@ -35,53 +59,66 @@ class ExcelReader:
             "data_types": {col: str(dtype) for col, dtype in df.dtypes.items()}
         }
 
-    def search_data(self, sheet_name, search_term):
-        """Ищет данные на листе по ключевому слову."""
+    async def search_data(self, sheet_name: str, search_term: str) -> dict:
+        """
+        Search data in the sheet by key word.
+
+        Args:
+            sheet_name (str): sheet name for search.
+            search_term (str): search key word.
+
+        Returns:
+            dict: Search results with keys: sheet_name, search_term, matches_count, matches. 
+            Key error means wrong cell reference or out from bounds, so such cell is empty.
+        """
         if sheet_name not in self.dataframes:
-            self.dataframes[sheet_name] = pd.read_excel(self.excel_file, sheet_name)
+            self.dataframes[sheet_name] = pd.read_excel(self.file_path, sheet_name)
 
         df = self.dataframes[sheet_name]
 
-        # Поиск по всем столбцам
         matches = []
         for col in df.columns:
-            if df[col].dtype == 'object':  # Только для текстовых столбцов
+            if df[col].dtype == 'object':
                 matches.extend(df[df[col].astype(str).str.contains(search_term, case=False, na=False)].to_dict(orient="records"))
 
         return {
             "sheet_name": sheet_name,
             "search_term": search_term,
             "matches_count": len(matches),
-            "matches": matches[:10]  # Ограничиваем количество результатов
+            "matches": matches[:10]  # Limit the number of results
         }
 
-    def get_cell_value(self, sheet_name, cell_reference):
-        """Получает значение ячейки по ссылке (A1, B2 и т.д.)."""
+    async def get_cell_value(self, sheet_name: str, cell_reference: str) -> dict:
+        """
+        Get value of the cell by reference (A1, B2, etc.).
+
+        Args:
+            sheet_name (str): sheet name.
+            cell_reference (str): reference of the cell.
+
+        Returns:
+            dict: Cell value with keys: sheet_name, cell_reference, value
+        """
         if sheet_name not in self.dataframes:
-            self.dataframes[sheet_name] = pd.read_excel(self.excel_file, sheet_name)
+            self.dataframes[sheet_name] = pd.read_excel(self.file_path, sheet_name)
 
         df = self.dataframes[sheet_name]
 
-        # Преобразование ссылки A1 в индексы
-        import re
         match = re.match(r'([A-Z]+)(\d+)', cell_reference)
         if not match:
-            return {"error": f"Неверный формат ссылки: {cell_reference}"}
+            return {"error": f"Invalid reference format: {cell_reference}"}
 
         col_str, row_str = match.groups()
         row_idx = int(row_str) - 1
 
-        # Преобразование буквенного обозначения столбца в индекс
         col_idx = 0
         for c in col_str:
             col_idx = col_idx * 26 + (ord(c) - ord('A') + 1)
         col_idx -= 1
 
-        # Проверка границ
         if row_idx < 0 or row_idx >= len(df) or col_idx < 0 or col_idx >= len(df.columns):
-            return {"error": f"Ячейка {cell_reference} находится за пределами таблицы"}
+            return {"error": f"Cell {cell_reference} is out of bounds"}
 
-        # Получение значения
         value = df.iloc[row_idx, col_idx]
         return {
             "sheet_name": sheet_name,
@@ -89,26 +126,35 @@ class ExcelReader:
             "value": value
         }
 
-    def analyze_column(self, sheet_name, column_name):
-        """Анализирует указанный столбец."""
+    async def analyze_column(self, sheet_name: str, column_name: str) -> dict:
+        """
+        Analyze the specified column.
+
+        Args:
+            sheet_name (str): sheet name.
+            column_name (str): column name.
+
+        Returns:
+            dict: Analysis results with keys: sheet_name, column_name, stats
+        """
         if sheet_name not in self.dataframes:
-            self.dataframes[sheet_name] = pd.read_excel(self.excel_file, sheet_name)
+            self.dataframes[sheet_name] = pd.read_excel(self.file_path, sheet_name)
 
         df = self.dataframes[sheet_name]
 
         if column_name not in df.columns:
-            return {"error": f"Столбец {column_name} не найден"}
+            return {"error": f"Column {column_name} not found"}
 
         column = df[column_name]
 
-        # Базовая статистика
+        # Basic statistics
         stats = {
             "count": len(column),
             "null_count": column.isna().sum(),
             "unique_values": column.nunique()
         }
 
-        # Дополнительная статистика для числовых столбцов
+        # Additional statistics for numerical columns
         if pd.api.types.is_numeric_dtype(column):
             stats.update({
                 "min": float(column.min()),
@@ -118,9 +164,9 @@ class ExcelReader:
                 "std": float(column.std())
             })
 
-        # Для категориальных данных
+        # For categorical data
         else:
-            # Наиболее частые значения
+            # Most frequent values
             value_counts = column.value_counts().head(5).to_dict()
             stats["most_common_values"] = {str(k): int(v) for k, v in value_counts.items()}
 
@@ -129,4 +175,4 @@ class ExcelReader:
             "column_name": column_name,
             "stats": stats
         }
-
+    

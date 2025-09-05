@@ -1,13 +1,14 @@
 import io
 import json
 import pandas as pd
+from pathlib import Path
 from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 
-from agent.constants import GD_CREDENTIALS_FILE, AUTH_DATA_DIR
+from agent.constants import AUTH_DATA_DIR, CACHE_DIR, GD_CREDENTIALS_FILE
 from agent.exceptions import GoogleDriveAuthError, GoogleDriveError
 from agent.GD import SCOPES
 
@@ -52,7 +53,7 @@ class GDRequestor:
             self._creds = Credentials.from_authorized_user_file(AUTH_DATA_DIR / "token.json", SCOPES)
         if not self._creds or not self._creds.valid:
             flow = InstalledAppFlow.from_client_secrets_file(GD_CREDENTIALS_FILE, SCOPES)
-            self._creds = flow.run_local_server(port=0, timeout_seconds=5)
+            self._creds = flow.run_local_server(port=0, timeout_seconds=20)
             with open(AUTH_DATA_DIR / 'token.json', 'w', encoding="utf-8") as token:
                 token.write(self._creds.to_json())
     
@@ -72,50 +73,66 @@ class GDRequestor:
         Raises:
             GoogleDriveError: if problem with google drive connection.
         """
-        return [{"id": "file1", "name": "Новая таблица.xlsx"}]
         query = "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or " \
-            "mimeType='application/vnd.ms-excel'"# or mimeType='application/vnd.google-apps.spreadsheet'"
+            "mimeType='application/vnd.ms-excel' or mimeType='application/vnd.google-apps.spreadsheet'"
         try:
             results = self._service.files().list(
                 q=query,
                 spaces='drive',
                 fields="files(id, name)",
-                pageSize=1000
+                pageSize=1000,
+                timeout=10
             ).execute()
             files = results.get('files', [])
             return files
         except Exception as exc:
             raise GoogleDriveError(str(exc)) from exc
     
-    def read_excel(self, file_id: str) -> dict:
+    def download_file(self, file_id: str) -> Path:
         """
-        Reads an excel file from Google drive
+        Downloads an excel file from Google drive and save it to cache.
 
         Args:
-            file_id (str): file id on Google Drive
+            file_id (str): file id on Google Drive.
 
         Returns:
-            dict: the data from Excel file
+            Path: path to downloaded file.
 
         Raises:
             GoogleDriveError: if problem with google drive connection.
         """
-        #if self._servise.files().get(fileId=file_id).execute()['mimeType'] != "application/vnd.google-apps.spreadsheet":
+        if (CACHE_DIR/file_id).exists():
+            return CACHE_DIR/file_id
 
         try:
-            request = self._service.files().get_media(fileId=file_id)
-            file_content = io.BytesIO()
-            downloader = MediaIoBaseDownload(file_content, request)
-            done = False
-            while not done:
-                _, done = downloader.next_chunk()
+            file_metadata = self._service.files().get(fileId=file_id).execute()
+            mime_type = file_metadata['mimeType']
+            if mime_type == "application/vnd.google-apps.spreadsheet":
+                export_mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            else:
+                file_extension = ""
+            file_path = CACHE_DIR / f"{file_id}"
+
+            with open(file_path, "wb") as file:
+                if mime_type == "application/vnd.google-apps.spreadsheet":
+                    request = self._service.files().export_media(
+                        fileId=file_id, 
+                        mimeType=export_mime_type
+                    )
+                else:
+                    request = self._service.files().get_media(fileId=file_id)
+
+                downloader = MediaIoBaseDownload(file, request)
+                done = False
+                while not done:
+                    _, done = downloader.next_chunk()
+
+            return file_path
+
         except Exception as exc:
             raise GoogleDriveError(str(exc)) from exc
-        file_content.seek(0)
-        df = pd.read_excel(file_content)
-        print(df.head())
-        return df.to_dict(orient='records')
+
 
 if __name__ == "__main__":
     a = GDRequestor()
-    a.read_excel(a.list_files()[0]["id"])
+    a.download_file(a.list_files()[0]["id"])

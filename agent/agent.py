@@ -34,7 +34,7 @@ class Agent:
         if name == "base_url":
             LLMAgent.base_url = value
         elif name == "api_key":
-            LLMAgent.api_key = value
+            LLMAgent.api_key = value if value else "key"
         elif name == "model":
             LLMAgent.model = value
 
