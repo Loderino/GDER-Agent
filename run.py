@@ -3,7 +3,13 @@ import asyncio
 from langchain_core.messages import AIMessage, HumanMessage
 
 from agent.agent import Agent
-from agent.constants import LLM_API_KEY, LLM_API_NAME, LLM_BASE_URL
+from agent.constants import (
+    AUTH_DATA_DIR,
+    CACHE_DIR,
+    LLM_API_KEY,
+    LLM_API_NAME,
+    LLM_BASE_URL,
+)
 from agent.exceptions import AgentError
 from api.main import run_api
 
@@ -13,7 +19,13 @@ agent.base_url = LLM_BASE_URL
 agent.model = LLM_API_NAME
 
 
+def make_dirs():
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    AUTH_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+
 async def test():
+    make_dirs()
     messages = []
     while True:
         user_input = input("> ")
@@ -27,6 +39,7 @@ import traceback
 
 
 async def main():
+    make_dirs()
     try:
         await agent.check_health()
     except AgentError:
