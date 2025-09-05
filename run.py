@@ -1,15 +1,14 @@
 import asyncio
-
-from api.main import run_api
-from agent.agent import Agent
 from langchain_core.messages import HumanMessage, AIMessage
-from agent.constants import LLM_API_NAME, LLM_API_KEY, LLM_API_BASE
-from agent.exceptions import AgentError
 
+from agent.agent import Agent
+from agent.constants import LLM_API_NAME, LLM_API_KEY, LLM_BASE_URL
+from agent.exceptions import AgentError
+from api.main import run_api
 
 agent = Agent()
 agent.api_key = LLM_API_KEY
-agent.base_url = LLM_API_BASE
+agent.base_url = LLM_BASE_URL
 agent.model = LLM_API_NAME
 
 async def test():
@@ -27,7 +26,7 @@ async def main():
         await agent.check_health()
     except AgentError as e:
         print(e)
-        traceback.format_exc()
+        print(traceback.format_exc())
         return
     
     await run_api()

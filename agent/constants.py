@@ -1,6 +1,6 @@
-from dotenv import load_dotenv
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
@@ -9,4 +9,4 @@ GD_CREDENTIALS_FILE = Path(os.getenv("GD_CREDENTIALS_FILE"))
 
 LLM_API_NAME = os.getenv("LLM_API_NAME")
 LLM_API_KEY = os.getenv("LLM_API_KEY")
-LLM_API_BASE = os.getenv("LLM_API_BASE")
+LLM_BASE_URL = os.getenv("LLM_BASE_URL")

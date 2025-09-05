@@ -1,21 +1,18 @@
+from langchain_core.messages import BaseMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import StateGraph
-from langchain_core.messages import BaseMessage
+
 from agent.graph.models import State
-from agent.graph.nodes import authentication_node, file_selection_node, files_getting_node, file_reading_node, file_questions_node
+from agent.graph.nodes import file_selection_node, files_getting_node, file_reading_node, file_questions_node
 
 workflow = StateGraph(State)
 
-workflow.add_node("authentication", authentication_node)
 workflow.add_node("files_getting", files_getting_node)
 workflow.add_node("file_selection", file_selection_node)
 workflow.add_node("file_reading", file_reading_node)
 workflow.add_node("file_questions", file_questions_node)
 
-# Добавляем функцию-маршрутизатор для определения начального узла
 def router(state):
-    if not state.get("authenticated", False):
-        return "authentication"
     if  state.get("available_files", []) is None:
         return "files_getting"
     if state.get("selected_file_id", None) is None:
@@ -27,12 +24,6 @@ def router(state):
 workflow.add_conditional_edges(
     "__start__",
     router
-)
-
-# Добавляем условные переходы
-workflow.add_conditional_edges(
-    "authentication",
-    lambda state: "files_getting" if state.get("authenticated", False) else "__end__"
 )
 workflow.add_conditional_edges(
     "files_getting",
@@ -48,7 +39,7 @@ workflow.add_conditional_edges(
 )
 workflow.add_edge(
     "file_questions",
-    "__end__"#"file_questions"
+    "__end__"
 )
 
 

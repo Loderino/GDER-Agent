@@ -1,6 +1,6 @@
+from typing import Optional
 from typing import TypedDict
 from langchain_core.messages import BaseMessage
-from typing import Optional
 
 class State(TypedDict):
     """State for the Google Drive agent workflow."""

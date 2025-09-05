@@ -1,8 +1,19 @@
 import json
-import uuid
 import time
+import uuid
 
-def make_openai_style_response(message, prompt_tokens, completion_tokens):
+def make_openai_style_response(message: str, prompt_tokens: int, completion_tokens: int) -> str:
+    """
+    Makes OpenAi style response format.
+
+    Args:
+        message (str): response from llm.
+        prompt_tokens (int): tokens number in prompt.
+        completion_tokens (int): tokens_number in message.
+
+    Returns:
+        str: JSON string in OpenAI response style format.
+    """
     return json.dumps({
         "id": f"chatcmpl-{uuid.uuid4()}",
         "object": "chat.completion",
@@ -35,7 +46,26 @@ def make_openai_style_response(message, prompt_tokens, completion_tokens):
             }
         })
 
-def make_openai_style_chunk(answer_id, text='', usage=None, is_first=False, finish_reason=None):
+def make_openai_style_chunk(
+        answer_id: str,
+        text: str = '',
+        usage: dict = None,
+        is_first: bool = False,
+        finish_reason: str = None
+    ) -> str:
+    """
+    Makes OpenAI style response chunk.
+
+    Args:
+        answer_id (str): value for `id` field in chunk body.
+        text (str, optional): text chunk of llm response. Defaults to ''.
+        usage (dict, optional): usage info for last chunk. Defaults to None. Else text parameter will be ignored.
+        is_first (bool, optional): flag for first chunk, that differs from other. Defaults to False.
+        finish_reason (str, optional): value for `finish reason` field in chunk body. Defaults to None. Else text parameter will be ignored.
+
+    Returns:
+        str: JSON string in OpenAI response chunk style format.
+    """
     base_chunk = {
         "id":answer_id,
         "object":"chat.completion.chunk",
@@ -60,19 +90,18 @@ def make_openai_style_chunk(answer_id, text='', usage=None, is_first=False, fini
         base_chunk["choices"][0]["delta"]["role"] = "assistant"
         base_chunk["choices"][0]["delta"]["refusal"] = None
         return json.dumps(base_chunk)
-    
+
     if finish_reason:
         base_chunk["choices"][0]["finish_reason"] = finish_reason
         base_chunk["choices"][0]["delta"] = {}
         return json.dumps(base_chunk)
-    
+
     if usage:
         base_chunk["choices"] = []
         base_chunk["usage"] = usage
         return json.dumps(base_chunk)
-    
+
     base_chunk["choices"][0]["delta"]["content"] = text
     return json.dumps(base_chunk)
-
 
     
