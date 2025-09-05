@@ -1,10 +1,13 @@
 import re
+
 import pandas as pd
+
 
 class ExcelReader:
     """
     Class for reading Excel files.
     """
+
     def __init__(self, file_name: str, file_path: str):
         """
         Initialize ExcelReader.
@@ -29,7 +32,7 @@ class ExcelReader:
         return {
             "file_name": self.file_name,
             "sheet_count": len(self.sheets),
-            "sheet_names": self.sheets
+            "sheet_names": self.sheets,
         }
 
     async def get_sheet_preview(self, sheet_name: str = None) -> dict:
@@ -56,7 +59,7 @@ class ExcelReader:
             "column_count": len(df.columns),
             "columns": df.columns.tolist(),
             "preview_rows": df.head(5).to_dict(orient="records"),
-            "data_types": {col: str(dtype) for col, dtype in df.dtypes.items()}
+            "data_types": {col: str(dtype) for col, dtype in df.dtypes.items()},
         }
 
     async def search_data(self, sheet_name: str, search_term: str) -> dict:
@@ -68,7 +71,7 @@ class ExcelReader:
             search_term (str): search key word.
 
         Returns:
-            dict: Search results with keys: sheet_name, search_term, matches_count, matches. 
+            dict: Search results with keys: sheet_name, search_term, matches_count, matches.
             Key error means wrong cell reference or out from bounds, so such cell is empty.
         """
         if sheet_name not in self.dataframes:
@@ -78,14 +81,20 @@ class ExcelReader:
 
         matches = []
         for col in df.columns:
-            if df[col].dtype == 'object':
-                matches.extend(df[df[col].astype(str).str.contains(search_term, case=False, na=False)].to_dict(orient="records"))
+            if df[col].dtype == "object":
+                matches.extend(
+                    df[
+                        df[col]
+                        .astype(str)
+                        .str.contains(search_term, case=False, na=False)
+                    ].to_dict(orient="records")
+                )
 
         return {
             "sheet_name": sheet_name,
             "search_term": search_term,
             "matches_count": len(matches),
-            "matches": matches[:10]  # Limit the number of results
+            "matches": matches[:10],  # Limit the number of results
         }
 
     async def get_cell_value(self, sheet_name: str, cell_reference: str) -> dict:
@@ -104,7 +113,7 @@ class ExcelReader:
 
         df = self.dataframes[sheet_name]
 
-        match = re.match(r'([A-Z]+)(\d+)', cell_reference)
+        match = re.match(r"([A-Z]+)(\d+)", cell_reference)
         if not match:
             return {"error": f"Invalid reference format: {cell_reference}"}
 
@@ -113,17 +122,22 @@ class ExcelReader:
 
         col_idx = 0
         for c in col_str:
-            col_idx = col_idx * 26 + (ord(c) - ord('A') + 1)
+            col_idx = col_idx * 26 + (ord(c) - ord("A") + 1)
         col_idx -= 1
 
-        if row_idx < 0 or row_idx >= len(df) or col_idx < 0 or col_idx >= len(df.columns):
+        if (
+            row_idx < 0
+            or row_idx >= len(df)
+            or col_idx < 0
+            or col_idx >= len(df.columns)
+        ):
             return {"error": f"Cell {cell_reference} is out of bounds"}
 
         value = df.iloc[row_idx, col_idx]
         return {
             "sheet_name": sheet_name,
             "cell_reference": cell_reference,
-            "value": value
+            "value": value,
         }
 
     async def analyze_column(self, sheet_name: str, column_name: str) -> dict:
@@ -151,28 +165,27 @@ class ExcelReader:
         stats = {
             "count": len(column),
             "null_count": column.isna().sum(),
-            "unique_values": column.nunique()
+            "unique_values": column.nunique(),
         }
 
         # Additional statistics for numerical columns
         if pd.api.types.is_numeric_dtype(column):
-            stats.update({
-                "min": float(column.min()),
-                "max": float(column.max()),
-                "mean": float(column.mean()),
-                "median": float(column.median()),
-                "std": float(column.std())
-            })
+            stats.update(
+                {
+                    "min": float(column.min()),
+                    "max": float(column.max()),
+                    "mean": float(column.mean()),
+                    "median": float(column.median()),
+                    "std": float(column.std()),
+                }
+            )
 
         # For categorical data
         else:
             # Most frequent values
             value_counts = column.value_counts().head(5).to_dict()
-            stats["most_common_values"] = {str(k): int(v) for k, v in value_counts.items()}
+            stats["most_common_values"] = {
+                str(k): int(v) for k, v in value_counts.items()
+            }
 
-        return {
-            "sheet_name": sheet_name,
-            "column_name": column_name,
-            "stats": stats
-        }
-    
+        return {"sheet_name": sheet_name, "column_name": column_name, "stats": stats}

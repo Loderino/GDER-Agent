@@ -5,6 +5,7 @@ from agent.parser.parser import WebParser
 
 parser = WebParser()
 
+
 def get_tools(user_id: str) -> list[StructuredTool]:
     """
     Returns a list of tools functions for llm, specified for user.
@@ -16,7 +17,11 @@ def get_tools(user_id: str) -> list[StructuredTool]:
         excel_reader.get_sheet_preview,
         excel_reader.search_data,
         excel_reader.get_cell_value,
-        excel_reader.analyze_column
+        excel_reader.analyze_column,
     ]:
-        tools.append(StructuredTool.from_function(func, name=func.__name__, description=func.__doc__))
+        tools.append(
+            StructuredTool.from_function(
+                func, name=func.__name__, description=func.__doc__
+            )
+        )
     return tools

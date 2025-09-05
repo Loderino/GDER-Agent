@@ -2,7 +2,10 @@ import json
 import time
 import uuid
 
-def make_openai_style_response(message: str, prompt_tokens: int, completion_tokens: int) -> dict:
+
+def make_openai_style_response(
+    message: str, prompt_tokens: int, completion_tokens: int
+) -> dict:
     """
     Makes OpenAi style response format.
 
@@ -20,39 +23,40 @@ def make_openai_style_response(message: str, prompt_tokens: int, completion_toke
         "created": int(time.time()),
         "model": "GDER-agent",
         "choices": [
-                {
-                    "index":0,
-                    "message":{
-                        "role":"assistant",
-                        "content": message,
-                        "refusal": None,
-                        "annotations":[]
-                    },
-                    "logprob":None,
-                    "finish_reason":"stop"
-                }
-            ],
-            "usage": {
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": completion_tokens,
-                "total_tokens": prompt_tokens+completion_tokens,
-                "prompt_tokens_details": {"cached_tokens": 0, "audio_tokens": 0},
-                "completion_tokens_details": {
-                    "reasoning_tokens": 0, 
-                    "audio_tokens": 0, 
-                    "accepted_prediction_tokens": 0, 
-                    "rejected_prediction_tokens": 0
-                }
+            {
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": message,
+                    "refusal": None,
+                    "annotations": [],
+                },
+                "logprob": None,
+                "finish_reason": "stop",
             }
-        }
+        ],
+        "usage": {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": prompt_tokens + completion_tokens,
+            "prompt_tokens_details": {"cached_tokens": 0, "audio_tokens": 0},
+            "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "audio_tokens": 0,
+                "accepted_prediction_tokens": 0,
+                "rejected_prediction_tokens": 0,
+            },
+        },
+    }
+
 
 def make_openai_style_chunk(
-        answer_id: str,
-        text: str = '',
-        usage: dict = None,
-        is_first: bool = False,
-        finish_reason: str = None
-    ) -> str:
+    answer_id: str,
+    text: str = "",
+    usage: dict = None,
+    is_first: bool = False,
+    finish_reason: str = None,
+) -> str:
     """
     Makes OpenAI style response chunk.
 
@@ -67,23 +71,21 @@ def make_openai_style_chunk(
         str: JSON string in OpenAI response chunk style format.
     """
     base_chunk = {
-        "id":answer_id,
-        "object":"chat.completion.chunk",
+        "id": answer_id,
+        "object": "chat.completion.chunk",
         "created": int(time.time()),
         "model": "GDER-agent",
-        "service_tier": "default", 
+        "service_tier": "default",
         "system_fingerprint": None,
-        "choices":[
+        "choices": [
             {
-                "index":0,
-                "delta": {
-                    "content":""
-                },
-                "logprobs":None,
-                "finish_reason":None
+                "index": 0,
+                "delta": {"content": ""},
+                "logprobs": None,
+                "finish_reason": None,
             }
         ],
-        "usage":None
+        "usage": None,
     }
 
     if is_first:
@@ -103,5 +105,3 @@ def make_openai_style_chunk(
 
     base_chunk["choices"][0]["delta"]["content"] = text
     return json.dumps(base_chunk)
-
-    

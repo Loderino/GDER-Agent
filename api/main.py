@@ -1,10 +1,10 @@
 import os
+
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.endpoints import router
-
 
 app = FastAPI()
 
@@ -20,8 +20,11 @@ app.add_middleware(
 
 app.include_router(router)
 
+
 async def run_api(
-    host: str = os.getenv("HOST", "0.0.0.0"), port: int = int(os.getenv("PORT", "5555")), reload: bool = False
+    host: str = os.getenv("HOST", "0.0.0.0"),
+    port: int = int(os.getenv("PORT", "5555")),
+    reload: bool = False,
 ) -> None:
     """
     Asynchronously runs the API server using Uvicorn.

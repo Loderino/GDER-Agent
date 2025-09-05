@@ -1,9 +1,11 @@
 from agent.excel.excel_reader import ExcelReader
 
-class Manager():
+
+class Manager:
     """
     Manager for storing and retrieving ExcelReader instances.
     """
+
     _readers = {}
 
     @classmethod

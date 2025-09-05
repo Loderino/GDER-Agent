@@ -5,6 +5,7 @@ from agent.GD.requestor import GDRequestor
 from agent.graph.workflows import interact
 from agent.llm.models import LLMAgent
 
+
 class Agent:
     """
     Agent for access to excel files on Google Drive using langgraph.
@@ -50,14 +51,18 @@ class Agent:
             AgentError: if some problems with Google drive authentication or llm is unreachable.
         """
         try:
-            response = httpx.get(LLMAgent.base_url + "/models", headers={"Authorization": "Bearer " + LLMAgent.api_key}, timeout=5)
+            response = httpx.get(
+                LLMAgent.base_url + "/models",
+                headers={"Authorization": "Bearer " + LLMAgent.api_key},
+                timeout=5,
+            )
         except (httpx.ConnectTimeout, httpx.ConnectError) as exc:
             raise AgentError("No connection to llm api") from exc
         except httpx.LocalProtocolError as exc:
             raise AgentError(str(exc)) from exc
-        if response.status_code==401:
+        if response.status_code == 401:
             raise AgentError("wrong api key")
-        if response.status_code!=200:
+        if response.status_code != 200:
             raise AgentError("wrong llm data")
         for model in response.json()["data"]:
             if model["id"] == LLMAgent.model:

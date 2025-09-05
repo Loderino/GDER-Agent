@@ -1,10 +1,12 @@
 from bs4 import BeautifulSoup as bs
 from httpx import AsyncClient
 
+
 class WebParser:
     """
     Class for parsing of web pages.
     """
+
     def __init__(self):
         self._client = AsyncClient()
 
@@ -24,7 +26,7 @@ class WebParser:
         """
         Gets the html page and returns useful text from it.
 
-        Args: 
+        Args:
             url (str):  url for web page to parse.
 
         Returns:
@@ -44,14 +46,16 @@ class WebParser:
         Returns:
             str: extracted useful text.
         """
-        soup = bs(html_content, 'html.parser')
+        soup = bs(html_content, "html.parser")
 
-        for tag in soup(['script', 'style', 'header', 'footer', 'nav', 'aside', 'meta', 'link']):
+        for tag in soup(
+            ["script", "style", "header", "footer", "nav", "aside", "meta", "link"]
+        ):
             tag.decompose()
 
-        text = soup.get_text(separator=' ', strip=True)
+        text = soup.get_text(separator=" ", strip=True)
         lines = (line.strip() for line in text.splitlines())
         chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-        text = '\n'.join(chunk for chunk in chunks if chunk)
+        text = "\n".join(chunk for chunk in chunks if chunk)
 
         return text

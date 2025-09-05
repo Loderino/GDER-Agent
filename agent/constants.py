@@ -1,6 +1,7 @@
 import logging
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
@@ -30,4 +31,3 @@ match _log_level:
         LOG_LEVEL = logging.CRITICAL
     case _:
         LOG_LEVEL = logging.INFO
-

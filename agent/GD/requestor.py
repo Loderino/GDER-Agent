@@ -1,7 +1,6 @@
-import io
 import json
-import pandas as pd
 from pathlib import Path
+
 from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -17,14 +16,16 @@ class GDRequestor:
     """
     A singleton class to interact with Google drive.
     """
+
     _instance = None
+
     def __new__(cls):
         if not cls._instance:
             cls._instance = super().__new__(cls)
         return cls._instance
 
     def __init__(self):
-        if not hasattr(self, '_initialized'):
+        if not hasattr(self, "_initialized"):
             self._initialized = True
             self._creds = None
             try:
@@ -34,9 +35,11 @@ class GDRequestor:
                     self._auth(use_cache=True)
                 else:
                     self._auth_from_service_account()
-                self._service = build('drive', 'v3', credentials=self._creds)
+                self._service = build("drive", "v3", credentials=self._creds)
             except FileNotFoundError as exc:
-                raise GoogleDriveAuthError(f"Credentials file not found by path {GD_CREDENTIALS_FILE}") from exc
+                raise GoogleDriveAuthError(
+                    f"Credentials file not found by path {GD_CREDENTIALS_FILE}"
+                ) from exc
             except AttributeError as exc:
                 raise GoogleDriveAuthError("Timeout for authorize pass.") from exc
             except Exception as exc:
@@ -50,18 +53,24 @@ class GDRequestor:
             use_cache (bool): If True it will be use cached token after interactive authentication.
         """
         if use_cache and (AUTH_DATA_DIR / "token.json").exists():
-            self._creds = Credentials.from_authorized_user_file(AUTH_DATA_DIR / "token.json", SCOPES)
+            self._creds = Credentials.from_authorized_user_file(
+                AUTH_DATA_DIR / "token.json", SCOPES
+            )
         if not self._creds or not self._creds.valid:
-            flow = InstalledAppFlow.from_client_secrets_file(GD_CREDENTIALS_FILE, SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file(
+                GD_CREDENTIALS_FILE, SCOPES
+            )
             self._creds = flow.run_local_server(port=0, timeout_seconds=20)
-            with open(AUTH_DATA_DIR / 'token.json', 'w', encoding="utf-8") as token:
+            with open(AUTH_DATA_DIR / "token.json", "w", encoding="utf-8") as token:
                 token.write(self._creds.to_json())
-    
+
     def _auth_from_service_account(self) -> None:
         """
         Makes connection with Google drive with service account file.
         """
-        self._creds = service_account.Credentials.from_service_account_file(GD_CREDENTIALS_FILE, scopes=SCOPES)
+        self._creds = service_account.Credentials.from_service_account_file(
+            GD_CREDENTIALS_FILE, scopes=SCOPES
+        )
 
     def list_files(self) -> list[dict]:
         """
@@ -73,20 +82,26 @@ class GDRequestor:
         Raises:
             GoogleDriveError: if problem with google drive connection.
         """
-        query = "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or " \
+        query = (
+            "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or "
             "mimeType='application/vnd.ms-excel' or mimeType='application/vnd.google-apps.spreadsheet'"
+        )
         try:
-            results = self._service.files().list(
-                q=query,
-                spaces='drive',
-                fields="files(id, name)",
-                pageSize=1000,
-            ).execute()
-            files = results.get('files', [])
+            results = (
+                self._service.files()
+                .list(
+                    q=query,
+                    spaces="drive",
+                    fields="files(id, name)",
+                    pageSize=1000,
+                )
+                .execute()
+            )
+            files = results.get("files", [])
             return files
         except Exception as exc:
             raise GoogleDriveError(str(exc)) from exc
-    
+
     def download_file(self, file_id: str) -> Path:
         """
         Downloads an excel file from Google drive and save it to cache.
@@ -100,14 +115,16 @@ class GDRequestor:
         Raises:
             GoogleDriveError: if problem with google drive connection.
         """
-        if (CACHE_DIR/file_id).exists():
-            return CACHE_DIR/file_id
+        if (CACHE_DIR / file_id).exists():
+            return CACHE_DIR / file_id
 
         try:
             file_metadata = self._service.files().get(fileId=file_id).execute()
-            mime_type = file_metadata['mimeType']
+            mime_type = file_metadata["mimeType"]
             if mime_type == "application/vnd.google-apps.spreadsheet":
-                export_mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                export_mime_type = (
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
             else:
                 file_extension = ""
             file_path = CACHE_DIR / f"{file_id}"
@@ -115,8 +132,7 @@ class GDRequestor:
             with open(file_path, "wb") as file:
                 if mime_type == "application/vnd.google-apps.spreadsheet":
                     request = self._service.files().export_media(
-                        fileId=file_id, 
-                        mimeType=export_mime_type
+                        fileId=file_id, mimeType=export_mime_type
                     )
                 else:
                     request = self._service.files().get_media(fileId=file_id)

@@ -1,19 +1,22 @@
-from langchain_core.messages import trim_messages
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import BaseMessage, trim_messages
 from langchain_openai import ChatOpenAI
-from openai import NotFoundError, APITimeoutError, APIConnectionError
+from openai import APIConnectionError, APITimeoutError, NotFoundError
 
 from agent.exceptions import LLMError
+
 
 class LLMAgent:
     """
     Class for communicating with LLM.
     """
+
     model: str = None
     api_key: str = None
     base_url: str = None
 
-    def __init__(self, tools: list = None, schema: dict = None, max_tokens: int = 1000, **kwargs):
+    def __init__(
+        self, tools: list = None, schema: dict = None, max_tokens: int = 1000, **kwargs
+    ):
         """
         Makes llm instance with necessary settings.
 
@@ -29,34 +32,36 @@ class LLMAgent:
             raise RuntimeError("The model and the api_key must be specified.")
         if tools:
             self.llm = ChatOpenAI(
-                model = self.model,
-                api_key = self.api_key,
-                base_url = self.base_url,
-                timeout = 10,
-                max_completion_tokens=max_tokens
+                model=self.model,
+                api_key=self.api_key,
+                base_url=self.base_url,
+                timeout=10,
+                max_completion_tokens=max_tokens,
             ).bind_tools(tools, **kwargs)
         else:
             self.llm = ChatOpenAI(
-                model = self.model,
-                api_key = self.api_key,
-                base_url = self.base_url,
-                timeout = 10,
-                max_completion_tokens=max_tokens
+                model=self.model,
+                api_key=self.api_key,
+                base_url=self.base_url,
+                timeout=10,
+                max_completion_tokens=max_tokens,
             )
         if schema:
-            self.llm = self.llm.with_structured_output(schema, method="json_mode", include_raw=True)
+            self.llm = self.llm.with_structured_output(
+                schema, method="json_mode", include_raw=True
+            )
 
     async def call_model(self, messages: list[BaseMessage]) -> BaseMessage:
         """
-            Makes a request to llm.
+        Makes a request to llm.
 
-            Args:
-                messages (list[BaseMessage]): chat history.
+        Args:
+            messages (list[BaseMessage]): chat history.
 
-            Returns:
-                BaseMessage: llm response. 
-            
-            Raises: LLMError when problems with response completion.
+        Returns:
+            BaseMessage: llm response.
+
+        Raises: LLMError when problems with response completion.
         """
         # counter = ChatOpenAI(model=self.model, api_key=self.api_key)
         # messages = trim_messages(messages, max_tokens=1000, token_counter=counter)

@@ -2,6 +2,7 @@ import json
 import uuid
 from logging import getLogger
 from typing import Generator
+
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
@@ -14,7 +15,8 @@ logger = getLogger("api")
 logger.setLevel(LOG_LEVEL)
 
 router = APIRouter(prefix="/v1")
-agent=Agent()
+agent = Agent()
+
 
 @router.get("/models")
 async def list_models():
@@ -23,34 +25,33 @@ async def list_models():
     """
     return JSONResponse(
         {
-            "object": "list", 
-            "data":[
-                {
-                    "id":"GDER-agent",
-                    "created":1677610602,
-                    "owned_by":"Loderino"
-                }
-            ]
+            "object": "list",
+            "data": [
+                {"id": "GDER-agent", "created": 1677610602, "owned_by": "Loderino"}
+            ],
         }
     )
 
+
 async def chat_completion(messages: list[BaseMessage]) -> str:
     """
-        Handles requests from user client.
+    Handles requests from user client.
 
-        Args:
-            messages (list[BaseMessage]): chat history.
-        
-        Returns:
-            str: JSON string in OpenAI response style format. 
+    Args:
+        messages (list[BaseMessage]): chat history.
+
+    Returns:
+        str: JSON string in OpenAI response style format.
     """
-    user_message = next((m.get("content", "") for m in messages if m.get("role") == "user"), "")
+    user_message = next(
+        (m.get("content", "") for m in messages if m.get("role") == "user"), ""
+    )
     if "### Task:\n" in user_message:
         follow_ups = {
             "follow_ups": [
                 "Какие файлы можно открыть?",
                 "Что находится в ячейке A1?",
-                "Какая информация есть в открытом файле?"
+                "Какая информация есть в открытом файле?",
             ]
         }
         return JSONResponse(make_openai_style_response(json.dumps(follow_ups), 50, 100))
@@ -78,7 +79,7 @@ def split_text(text: str, chunk_size: int = 8) -> Generator[str, None, None]:
         str: chunk stream.
     """
     for i in range(0, len(text), chunk_size):
-        yield text[i:i+chunk_size]
+        yield text[i : i + chunk_size]
 
 
 def stream_imitation(text: str) -> Generator[str, None, None]:
@@ -98,35 +99,34 @@ def stream_imitation(text: str) -> Generator[str, None, None]:
         yield f"data: {make_openai_style_chunk(answer_id, text=chunk)}\n\n"
     yield f"data: {make_openai_style_chunk(answer_id, finish_reason='stop')}\n\n"
     final_chunk = make_openai_style_chunk(
-        answer_id, 
+        answer_id,
         usage={
-            "prompt_tokens": 11, 
-            "completion_tokens": 14, 
-            "total_tokens": 25, 
-            "prompt_tokens_details": {
-                "cached_tokens": 0, 
-                "audio_tokens": 0
-                },
+            "prompt_tokens": 11,
+            "completion_tokens": 14,
+            "total_tokens": 25,
+            "prompt_tokens_details": {"cached_tokens": 0, "audio_tokens": 0},
             "completion_tokens_details": {
-                "reasoning_tokens": 0, 
-                "audio_tokens": 0, 
-                "accepted_prediction_tokens": 0, 
-                "rejected_prediction_tokens": 0}
-                }
-            )
+                "reasoning_tokens": 0,
+                "audio_tokens": 0,
+                "accepted_prediction_tokens": 0,
+                "rejected_prediction_tokens": 0,
+            },
+        },
+    )
     yield f"data: {final_chunk}\n\n"
 
     yield "data: [DONE]"
 
+
 async def chat_completion_stream(messages: list[BaseMessage]) -> StreamingResponse:
     """
-        Handles requests with stream mode from user client.
+    Handles requests with stream mode from user client.
 
-        Args:
-            messages (list[BaseMessage]): chat history.
-        
-        Returns:
-            str: JSON string in OpenAI response style format 
+    Args:
+        messages (list[BaseMessage]): chat history.
+
+    Returns:
+        str: JSON string in OpenAI response style format
     """
     langchain_messages = []
     for msg in messages:
@@ -137,6 +137,7 @@ async def chat_completion_stream(messages: list[BaseMessage]) -> StreamingRespon
 
     response = await agent.communicate(1, langchain_messages)
     return StreamingResponse(stream_imitation(response), media_type="text/plain")
+
 
 @router.post("/chat/completions")
 async def create_chat_completion(request: Request):
