@@ -1,3 +1,4 @@
+from langchain_core.messages import trim_messages
 from langchain_core.messages import BaseMessage
 from langchain_openai import ChatOpenAI
 from openai import NotFoundError, APITimeoutError, APIConnectionError
@@ -44,6 +45,7 @@ class LLMAgent:
             )
         if schema:
             self.llm = self.llm.with_structured_output(schema, method="json_mode", include_raw=True)
+
     async def call_model(self, messages: list[BaseMessage]) -> BaseMessage:
         """
             Makes a request to llm.
@@ -51,9 +53,14 @@ class LLMAgent:
             Args:
                 messages (list[BaseMessage]): chat history.
 
-            returns:
+            Returns:
                 BaseMessage: llm response. 
+            
+            Raises: LLMError when problems with response completion.
         """
+        # counter = ChatOpenAI(model=self.model, api_key=self.api_key)
+        # messages = trim_messages(messages, max_tokens=1000, token_counter=counter)
+
         try:
             return await self.llm.ainvoke(messages)
         except NotFoundError as exc:

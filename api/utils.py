@@ -2,7 +2,7 @@ import json
 import time
 import uuid
 
-def make_openai_style_response(message: str, prompt_tokens: int, completion_tokens: int) -> str:
+def make_openai_style_response(message: str, prompt_tokens: int, completion_tokens: int) -> dict:
     """
     Makes OpenAi style response format.
 
@@ -12,9 +12,9 @@ def make_openai_style_response(message: str, prompt_tokens: int, completion_toke
         completion_tokens (int): tokens_number in message.
 
     Returns:
-        str: JSON string in OpenAI response style format.
+        dict: dict with data in OpenAI response style format.
     """
-    return json.dumps({
+    return {
         "id": f"chatcmpl-{uuid.uuid4()}",
         "object": "chat.completion",
         "created": int(time.time()),
@@ -44,7 +44,7 @@ def make_openai_style_response(message: str, prompt_tokens: int, completion_toke
                     "rejected_prediction_tokens": 0
                 }
             }
-        })
+        }
 
 def make_openai_style_chunk(
         answer_id: str,

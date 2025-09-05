@@ -44,12 +44,12 @@ async def chat_completion(messages: list[BaseMessage]) -> str:
     if "### Task:\n" in user_message:
         follow_ups = {
             "follow_ups": [
-                "Расскажите о шахматке бронирования",
-                "Какие инструменты доступны на realtycalendar.ru?",
-                "Как использовать календарь событий?"
+                "Какие файлы можно открыть?",
+                "Что находится в ячейке A1?",
+                "Какая информация есть в открытом файле?"
             ]
         }
-        return make_openai_style_response(json.dumps(follow_ups), 50, 100) 
+        return JSONResponse(make_openai_style_response(json.dumps(follow_ups), 50, 100))
 
     langchain_messages = []
     for msg in messages:
@@ -59,7 +59,7 @@ async def chat_completion(messages: list[BaseMessage]) -> str:
             langchain_messages.append(AIMessage(content=msg.get("content", "")))
 
     response = await agent.communicate(1, langchain_messages, verbose=True)
-    return make_openai_style_response(response, 50, 100)
+    return JSONResponse(make_openai_style_response(response, 50, 100))
 
 
 def split_text(text: str, chunk_size: int = 8) -> Generator[str, None, None]:
