@@ -15,7 +15,5 @@ class State(TypedDict):
 
     available_files: Optional[list[dict]]  # Список доступных файлов
 
-    verbose: bool  # Режим подробного вывода
-
     error: Optional[str]  # Сообщение об ошибке, если есть
     error_type: Optional[str]  # Тип ошибки

@@ -63,7 +63,7 @@ workflow.add_edge(
 
 app = workflow.compile(checkpointer=MemorySaver())
 
-async def interact(user_id: str, messages: list[BaseMessage], verbose: bool = False) -> str:
+async def interact(user_id: str, messages: list[BaseMessage]) -> str:
     """Entry point for interacting with langgraph application."""
     saved_state = app.get_state({"configurable": {"thread_id": user_id}})
     if saved_state.values:
@@ -73,12 +73,10 @@ async def interact(user_id: str, messages: list[BaseMessage], verbose: bool = Fa
     else:
         state = State(
             user_id=user_id,
-            verbose=verbose,
             message_history=messages,
             error=None,
             error_type=None
         )
 
     state = await app.ainvoke(state, config={"configurable": {"thread_id": user_id}})
-    print(state)
     return state["current_response"]

@@ -81,7 +81,6 @@ class GDRequestor:
                 spaces='drive',
                 fields="files(id, name)",
                 pageSize=1000,
-                timeout=10
             ).execute()
             files = results.get('files', [])
             return files

@@ -1,13 +1,17 @@
 import json
 import uuid
+from logging import getLogger
 from typing import Generator
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 
 from agent.agent import Agent
+from agent.constants import LOG_LEVEL
 from api.utils import make_openai_style_chunk, make_openai_style_response
 
+logger = getLogger("api")
+logger.setLevel(LOG_LEVEL)
 
 router = APIRouter(prefix="/v1")
 agent=Agent()
@@ -58,7 +62,7 @@ async def chat_completion(messages: list[BaseMessage]) -> str:
         elif msg.get("role") == "assistant":
             langchain_messages.append(AIMessage(content=msg.get("content", "")))
 
-    response = await agent.communicate(1, langchain_messages, verbose=True)
+    response = await agent.communicate(1, langchain_messages)
     return JSONResponse(make_openai_style_response(response, 50, 100))
 
 
@@ -131,7 +135,7 @@ async def chat_completion_stream(messages: list[BaseMessage]) -> StreamingRespon
         elif msg.get("role") == "assistant":
             langchain_messages.append(AIMessage(content=msg.get("content", "")))
 
-    response = await agent.communicate(1, langchain_messages, verbose=True)
+    response = await agent.communicate(1, langchain_messages)
     return StreamingResponse(stream_imitation(response), media_type="text/plain")
 
 @router.post("/chat/completions")
@@ -146,5 +150,5 @@ async def create_chat_completion(request: Request):
             return await chat_completion_stream(messages)
         return await chat_completion(messages)
     except Exception as exc:
-        print(f"Error: {str(exc)}")
+        logger.error("Error: %s", str(exc))
         raise HTTPException(status_code=500, detail=str(exc)) from exc

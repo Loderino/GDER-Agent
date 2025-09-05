@@ -67,16 +67,15 @@ class Agent:
         GDRequestor()
         return True
 
-    async def communicate(self, user_id: int, messages: list, verbose: bool = False) -> str:
+    async def communicate(self, user_id: int, messages: list) -> str:
         """
         Communicates with the langgraph agent.
 
         Args:
             user_id (int): The ID of the user.
             messages (list): The message history.
-            verbose (bool): Flag to print intermediate logs.
 
         Returns:
             str: The response from the agent.
         """
-        return await interact(user_id, messages, verbose=verbose)
+        return await interact(user_id, messages)
