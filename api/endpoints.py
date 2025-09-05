@@ -62,7 +62,7 @@ async def chat_completion(messages: list[BaseMessage]) -> str:
     return make_openai_style_response(response, 50, 100)
 
 
-def split_text(text: str, chunk_size: int = 8) -> Generator[str]:
+def split_text(text: str, chunk_size: int = 8) -> Generator[str, None, None]:
     """
     Splits text to chunks.
 
@@ -77,7 +77,7 @@ def split_text(text: str, chunk_size: int = 8) -> Generator[str]:
         yield text[i:i+chunk_size]
 
 
-def stream_imitation(text: str) -> Generator[str]:
+def stream_imitation(text: str) -> Generator[str, None, None]:
     """
     Imitate of stream mode answer.
 

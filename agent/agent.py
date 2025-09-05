@@ -53,6 +53,8 @@ class Agent:
             response = httpx.get(LLMAgent.base_url + "/models", headers={"Authorization": "Bearer " + LLMAgent.api_key}, timeout=5)
         except (httpx.ConnectTimeout, httpx.ConnectError) as exc:
             raise AgentError("No connection to llm api") from exc
+        except httpx.LocalProtocolError as exc:
+            raise AgentError(str(exc)) from exc
         if response.status_code==401:
             raise AgentError("wrong api key")
         if response.status_code!=200:
