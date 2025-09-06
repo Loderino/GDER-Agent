@@ -115,19 +115,24 @@ class GDRequestor:
         Raises:
             GoogleDriveError: if problem with google drive connection.
         """
-        if (CACHE_DIR / file_id).exists():
-            return CACHE_DIR / file_id
-
         try:
             file_metadata = self._service.files().get(fileId=file_id).execute()
             mime_type = file_metadata["mimeType"]
+
             if mime_type == "application/vnd.google-apps.spreadsheet":
-                export_mime_type = (
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+                extension = ".xlsx"
+                export_mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            elif mime_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                extension = ".xlsx"
+            elif mime_type == "application/vnd.ms-excel":
+                extension = ".xls"
             else:
-                file_extension = ""
-            file_path = CACHE_DIR / f"{file_id}"
+                extension = ".xlsx"
+
+            file_path = CACHE_DIR / f"{file_id}{extension}"
+
+            if file_path.exists():
+                return file_path
 
             with open(file_path, "wb") as file:
                 if mime_type == "application/vnd.google-apps.spreadsheet":

@@ -17,6 +17,7 @@ def get_tools(user_id: str) -> list[StructuredTool]:
         excel_reader.get_sheet_preview,
         excel_reader.search_data,
         excel_reader.get_cell_value,
+        excel_reader.get_range_values,
         excel_reader.analyze_column,
     ]:
         tools.append(

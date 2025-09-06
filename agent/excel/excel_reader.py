@@ -1,6 +1,7 @@
 import re
 
 import pandas as pd
+from openpyxl import load_workbook
 
 
 class ExcelReader:
@@ -21,6 +22,10 @@ class ExcelReader:
         excel_file = pd.ExcelFile(file_path)
         self.sheets = excel_file.sheet_names
         self.dataframes = {}
+
+    def _get_workbook(self):
+        """Lazy loading workbook for cell operations."""
+        return load_workbook(self.file_path, data_only=True)
 
     async def get_file_summary(self) -> dict:
         """
@@ -108,37 +113,78 @@ class ExcelReader:
         Returns:
             dict: Cell value with keys: sheet_name, cell_reference, value
         """
-        if sheet_name not in self.dataframes:
-            self.dataframes[sheet_name] = pd.read_excel(self.file_path, sheet_name)
+        try:
+            wb = self._get_workbook()
+            if sheet_name not in wb.sheetnames:
+                return {"error": f"Sheet {sheet_name} not found"}
 
-        df = self.dataframes[sheet_name]
+            ws = wb[sheet_name]
 
-        match = re.match(r"([A-Z]+)(\d+)", cell_reference)
-        if not match:
-            return {"error": f"Invalid reference format: {cell_reference}"}
+            if not re.match(r"^[A-Z]+\d+$", cell_reference.upper()):
+                return {"error": f"Invalid cell reference format: {cell_reference}"}
 
-        col_str, row_str = match.groups()
-        row_idx = int(row_str) - 1
+            cell = ws[cell_reference.upper()]
+            value = cell.value
+            return {
+                "sheet_name": sheet_name,
+                "cell_reference": cell_reference.upper(),
+                "value": value,
+                "data_type": type(value).__name__ if value is not None else "NoneType"
+            }
 
-        col_idx = 0
-        for c in col_str:
-            col_idx = col_idx * 26 + (ord(c) - ord("A") + 1)
-        col_idx -= 1
+        except Exception as e:
+            return {"error": f"Error accessing cell {cell_reference}: {str(e)}"}
 
-        if (
-            row_idx < 0
-            or row_idx >= len(df)
-            or col_idx < 0
-            or col_idx >= len(df.columns)
-        ):
-            return {"error": f"Cell {cell_reference} is out of bounds"}
+    async def get_range_values(self, sheet_name: str, range_reference: str) -> dict:
+        """
+        Get values from a range of cells (e.g., 'A1:C3').
 
-        value = df.iloc[row_idx, col_idx]
-        return {
-            "sheet_name": sheet_name,
-            "cell_reference": cell_reference,
-            "value": value,
-        }
+        Args:
+            sheet_name (str): sheet name.
+            range_reference (str): range reference (e.g., 'A1:C3').
+
+        Returns:
+            dict: Range values
+        """
+        try:
+            wb = self._get_workbook()
+            if sheet_name not in wb.sheetnames:
+                return {"error": f"Sheet {sheet_name} not found"}
+
+            ws = wb[sheet_name]
+
+            cell_range = ws[range_reference]
+
+            values = []
+            if hasattr(cell_range, '__iter__') and not isinstance(cell_range, str):
+                for row in cell_range:
+                    if hasattr(row, '__iter__'):
+                        row_values = []
+                        for cell in row:
+                            row_values.append({
+                                "address": cell.coordinate,
+                                "value": cell.value
+                            })
+                        values.append(row_values)
+                    else:
+                        values.append([{
+                            "address": row.coordinate,
+                            "value": row.value
+                        }])
+            else:
+                values = [[{
+                    "address": cell_range.coordinate,
+                    "value": cell_range.value
+                }]]
+
+            return {
+                "sheet_name": sheet_name,
+                "range_reference": range_reference,
+                "values": values
+            }
+
+        except Exception as e:
+            return {"error": f"Error accessing range {range_reference}: {str(e)}"}
 
     async def analyze_column(self, sheet_name: str, column_name: str) -> dict:
         """
