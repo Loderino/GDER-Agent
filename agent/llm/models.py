@@ -1,6 +1,6 @@
 from langchain_core.messages import BaseMessage, trim_messages
 from langchain_openai import ChatOpenAI
-from openai import APIConnectionError, APITimeoutError, NotFoundError
+from openai import APIConnectionError, APITimeoutError, BadRequestError, NotFoundError
 
 from agent.exceptions import LLMError
 
@@ -35,7 +35,7 @@ class LLMAgent:
                 model=self.model,
                 api_key=self.api_key,
                 base_url=self.base_url,
-                timeout=10,
+                timeout=30,
                 max_completion_tokens=max_tokens,
             ).bind_tools(tools, **kwargs)
         else:
@@ -43,7 +43,7 @@ class LLMAgent:
                 model=self.model,
                 api_key=self.api_key,
                 base_url=self.base_url,
-                timeout=10,
+                timeout=30,
                 max_completion_tokens=max_tokens,
             )
         if schema:
@@ -74,3 +74,5 @@ class LLMAgent:
             raise LLMError(f"Model {self.model} is not available.") from exc
         except APIConnectionError as exc:
             raise LLMError(f"Model {self.model} is not available.") from exc
+        except BadRequestError as exc:
+            raise LLMError(f"Model {self.model} is not supports tools.") from exc

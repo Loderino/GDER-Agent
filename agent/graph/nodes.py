@@ -54,9 +54,19 @@ async def file_selection_node(state: State) -> State:
         state["error_type"] = "LLMError"
         return state
     response = response["parsed"]
-    state["current_response"] = response.get("answer", "хорошо")
-    state["selected_file_id"] = response["file_id"]
-    state["selected_file_name"] = response["file_name"]
+    try:
+        if response["answer"] == "" or \
+        (not response["file_id"] is None 
+         and response["file_id"] not in map(lambda file: file["id"], state["available_files"])):
+            state["error"] = f"{llm.model}: doesn't use response schema."
+            state["error_type"] = "LLMError"
+            return state
+        state["current_response"] = response["answer"]
+        state["selected_file_id"] = response["file_id"]
+        state["selected_file_name"] = response["file_name"]
+    except KeyError:
+        state["error"] = f"{llm.model}: doesn't use response schema."
+        state["error_type"] = "LLMError"
     return state
 
 
@@ -142,12 +152,20 @@ async def file_questions_node(state: State) -> State:
         state["error_type"] = "LLMError"
         return state
 
-    state["current_response"] = response["parsed"]["answer"]
-    if response["parsed"]["reselect"]:
-        state["selected_file_path"] = None
-        state["available_files"] = None
-        state["selected_file_id"] = None
-        state["selected_file_name"] = None
+    try:
+        if response["parsed"]["answer"] == "":
+            state["error"] = f"{llm.model}: doesn't use response schema."
+            state["error_type"] = "LLMError"
+            return state
+        state["current_response"] = response["parsed"]["answer"]
+        if response["parsed"]["reselect"]:
+            state["selected_file_path"] = None
+            state["available_files"] = None
+            state["selected_file_id"] = None
+            state["selected_file_name"] = None
+    except KeyError:
+        state["error"] = f"{llm.model}: doesn't use response schema."
+        state["error_type"] = "LLMError"
     return state
 
 
