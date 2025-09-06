@@ -14,7 +14,8 @@ setuptools.setup(
         "langchain-openai==0.3.32",
         "langgraph==0.6.6",
         "openpyxl==3.1.5",
-        "pandas==2.3.2" "uvicorn==0.35.0",
+        "pandas==2.3.2", 
+        "uvicorn==0.35.0",
     ],
     python_requires=">=3.11",
 )

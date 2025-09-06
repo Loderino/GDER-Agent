@@ -9,6 +9,7 @@
 ```bash
 python3 -m venv venv
 source venv/bin/activate
+pip install -e .
 ```
 
 2) Заполнить .env файл:
