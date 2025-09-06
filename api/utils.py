@@ -104,4 +104,4 @@ def make_openai_style_chunk(
         return json.dumps(base_chunk)
 
     base_chunk["choices"][0]["delta"]["content"] = text
-    return json.dumps(base_chunk)
+    return json.dumps(base_chunk, ensure_ascii=False)
